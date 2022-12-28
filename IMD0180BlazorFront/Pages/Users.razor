@@ -1,0 +1,95 @@
+﻿@page "/Users"
+
+@inject IJSRuntime jsr
+@inject HttpClient Http
+@inject NavigationManager NavManager
+
+@using System.Text.Json
+@using IMD0180BlazorFront.Model
+@using System.Net.Http
+@using Microsoft.AspNetCore.Components.Forms
+@using System.Text
+@using System.IO
+@using System.Net.Http.Headers
+
+<h3>Usuários</h3>
+<p>
+    <a href="/adduser">Criar Novo Usuários</a>
+</p>
+@if (users == null)
+{
+
+}
+else
+{
+    <table class='table'>
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Login</th>
+                <th>Papel</th>
+                <th>Opções</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var user in users)
+            {
+                <tr>
+                    <td>@user.Id</td>
+                    <td>@user.Login</td>
+                    <td>@user.Role</td>
+                    <td>
+                        <a href='/editUser/@user.Id'>Edita</a>
+                        <a href='/deleteUser/@user.Id'>Deleta</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    List<User> users;
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            string token = await jsr.InvokeAsync<string>("localStorage.getItem", "token").ConfigureAwait(false);
+
+            var requestMsg = new HttpRequestMessage(HttpMethod.Get, "https://localhost:44317/User");
+            requestMsg.Headers.Add("Authorization", "Bearer " + token);
+            var response = await Http.SendAsync(requestMsg);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                await jsr.InvokeVoidAsync("localStorage.removeItem", "token").ConfigureAwait(false);
+                token = null;
+                await jsr.InvokeVoidAsync("alert", "Sem autorização!");
+                NavManager.NavigateTo("/");
+            }
+            else
+            {
+
+                if (response.Content is object && response.Content.Headers.ContentType.MediaType == "application/json")
+                {
+                    string contentString = await response.Content.ReadAsStringAsync();
+
+                    var options = new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    };
+
+                    users = System.Text.Json.JsonSerializer.Deserialize<List<User>>(contentString, options);
+                }
+
+                //users = await http.GetJsonAsync<List<Estudante>>("https://localhost:44317/User");
+            }
+        }
+        catch (Exception ex)
+        {
+
+        }
+
+
+    }
+}

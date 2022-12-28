@@ -1,0 +1,70 @@
+﻿@page "/"
+
+@inject IJSRuntime jsr
+@inject HttpClient Http
+
+@using System.Text.Json
+@using IMD0180BlazorFront.Model
+@using System.Net.Http
+@using Microsoft.AspNetCore.Components.Forms
+@using System.Text
+@using System.Net.Http.Headers
+
+<EditForm Model="@user" OnSubmit="Login">
+    <InputText id="ID" @bind-Value="user.Login" />
+    <InputText id="ChaveAcesso" @bind-Value="user.Password" />
+    <button type="submit">Enviar</button>
+</EditForm>
+
+<a href="javascript:;" @onclick="TesteConsulta">Testar GET</a>
+
+@code {
+    private User user = new User();
+
+    private async Task TesteConsulta()
+    {
+        try
+        {
+            string token = await jsr.InvokeAsync<string>("localStorage.getItem", "token").ConfigureAwait(false);
+
+            var requestMsg = new HttpRequestMessage(HttpMethod.Get, "https://localhost:44317/User");
+            requestMsg.Headers.Add("Authorization", "Bearer " + token);
+            var response = await Http.SendAsync(requestMsg);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                await jsr.InvokeVoidAsync("localStorage.removeItem", "token").ConfigureAwait(false);
+                token = null;
+                await jsr.InvokeVoidAsync("alert", "Sem autorização!");
+            }
+            else
+            {
+                await jsr.InvokeVoidAsync("alert", "Acesso auorizado! " + response.Content.ToString());
+
+                
+            }
+        }
+        catch (Exception ex)
+        {
+
+        }
+    }
+
+
+    private async Task Login()
+    {
+        HttpContent httpContent = new StringContent(JsonSerializer.Serialize(user), Encoding.UTF8);
+        httpContent.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+        HttpResponseMessage response = await new HttpClient().PostAsync("https://localhost:44317/Auth", httpContent);
+
+        if (response.IsSuccessStatusCode)
+        {
+            var content = await response.Content.ReadAsStringAsync();
+            LoginResult result = JsonSerializer.Deserialize<LoginResult>(content);
+            await jsr.InvokeVoidAsync("localStorage.setItem", "token",result.accessToken).ConfigureAwait(false);
+            await jsr.InvokeVoidAsync("alert", user.Login + " logado");
+        }
+
+
+    }
+}
