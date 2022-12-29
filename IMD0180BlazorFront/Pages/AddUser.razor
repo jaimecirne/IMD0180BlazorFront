@@ -1,0 +1,101 @@
+﻿@page "/adduser"
+
+@inject IJSRuntime jsr
+@inject HttpClient Http
+@inject NavigationManager NavManager
+
+
+@using System.Text.Json
+@using IMD0180BlazorFront.Model
+@using System.Net.Http
+@using Microsoft.AspNetCore.Components.Forms
+@using System.Text
+@using System.Net.Http.Headers
+
+<h2>Criar Usuário</h2>
+<hr />
+
+<EditForm Model="@user" OnValidSubmit="Add">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="form-group">
+                <label for="Login" class="control-label">Login</label>
+                <InputText @bind-Value="@user.Login" class="form-control" />
+                <ValidationMessage For="@(()=> user.Login)" />
+            </div>
+            <div class="form-group">
+                <label for="Password" class="control-label">Password</label>
+                <InputText @bind-Value="@user.Password" class="form-control" />
+                <ValidationMessage For="@(()=> user.Password)" />
+            </div>
+            <div class="form-group">
+                <label for="Papel" class="control-label">Papel</label>
+                <InputText @bind-Value="@user.Role" class="form-control" />
+                <ValidationMessage For="@(()=> user.Role)" />
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-4">
+            <div class="form-group">
+                <input type="submit" class="btn btn-primary" value="Salvar" />
+                <input type="button" class="btn" @onclick="@Cancel" value="Cancelar" />
+            </div>
+        </div>
+    </div>
+</EditForm>
+
+
+@code {
+    private User user = new User();
+
+    private async Task Add()
+    {
+        try
+        {
+            string token = await jsr.InvokeAsync<string>("localStorage.getItem", "token").ConfigureAwait(false);
+
+            HttpContent httpContent = new StringContent(JsonSerializer.Serialize(user), Encoding.UTF8);
+            httpContent.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
+            HttpRequestMessage requestMsg = new HttpRequestMessage(HttpMethod.Post, "https://localhost:44317/User");
+
+            requestMsg.Headers.Add("Authorization", "Bearer " + token);
+
+            requestMsg.Content = httpContent;
+
+            HttpResponseMessage response = await Http.SendAsync(requestMsg);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+                { 
+                    await jsr.InvokeVoidAsync("alert", "Você não tem permissão, apenas usuários admin pode realizar isso");
+                    NavManager.NavigateTo("/");
+                }
+                else{
+                    await jsr.InvokeVoidAsync("alert", "Erro ao Adicionar");
+                    NavManager.NavigateTo("/");
+                }
+            }
+            else
+            {
+                await jsr.InvokeVoidAsync("alert", "Adicionado com Sucesso!");
+                NavManager.NavigateTo("/Users");                
+            }
+        }
+        catch (Exception ex)
+        {
+            await jsr.InvokeVoidAsync("alert", "Erro ao Adicionar");
+            NavManager.NavigateTo("/");
+        }
+    }
+
+    void Cancel()
+    {
+        NavManager.NavigateTo("/Users");
+    }
+}

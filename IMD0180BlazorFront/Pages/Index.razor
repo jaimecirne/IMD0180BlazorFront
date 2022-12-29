@@ -2,6 +2,7 @@
 
 @inject IJSRuntime jsr
 @inject HttpClient Http
+@inject NavigationManager NavManager
 
 @using System.Text.Json
 @using IMD0180BlazorFront.Model
@@ -10,22 +11,65 @@
 @using System.Text
 @using System.Net.Http.Headers
 
-<EditForm Model="@user" OnSubmit="Login">
+@*<EditForm Model="@user" OnSubmit="Login">
     <InputText id="ID" @bind-Value="user.Login" />
     <InputText id="ChaveAcesso" @bind-Value="user.Password" />
     <button type="submit">Enviar</button>
-</EditForm>
+</EditForm>*@
 
-<a href="javascript:;" @onclick="TesteConsulta">Testar GET</a>
+@if (token == null)
+{
+    <EditForm Model="@user" OnValidSubmit="Login">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="row">
+            <div class="col-md-8">
+                <div class="form-group">
+                    <label for="Login" class="control-label">Login</label>
+                    <InputText @bind-Value="@user.Login" class="form-control" />
+                    <ValidationMessage For="@(()=> user.Login)" />
+                </div>
+                <div class="form-group">
+                    <label for="Password" class="control-label">Password</label>
+                    <InputText @bind-Value="@user.Password" class="form-control" />
+                    <ValidationMessage For="@(()=> user.Password)" />
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-4">
+                <div class="form-group">
+                    <input type="submit" class="btn btn-primary" value="Enviar" />
+                </div>
+            </div>
+        </div>
+    </EditForm>
+} else 
+{
+    <a href="javascript:;" @onclick="TesteConsulta">Testar GET and logout</a>
+}
 
 @code {
     private User user = new User();
+    string token;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            token = await jsr.InvokeAsync<string>("localStorage.getItem", "token").ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        { 
+        }
+    }
 
     private async Task TesteConsulta()
     {
         try
         {
-            string token = await jsr.InvokeAsync<string>("localStorage.getItem", "token").ConfigureAwait(false);
+            token = await jsr.InvokeAsync<string>("localStorage.getItem", "token").ConfigureAwait(false);
 
             var requestMsg = new HttpRequestMessage(HttpMethod.Get, "https://localhost:44317/User");
             requestMsg.Headers.Add("Authorization", "Bearer " + token);
@@ -39,9 +83,10 @@
             }
             else
             {
-                await jsr.InvokeVoidAsync("alert", "Acesso auorizado! " + response.Content.ToString());
-
-                
+                await jsr.InvokeVoidAsync("alert", "Acesso Autorizado! logout" + response.Content.ToString());
+                token = null;
+                await jsr.InvokeVoidAsync("localStorage.removeItem", "token").ConfigureAwait(false);
+                NavManager.NavigateTo("/");
             }
         }
         catch (Exception ex)
@@ -63,6 +108,7 @@
             LoginResult result = JsonSerializer.Deserialize<LoginResult>(content);
             await jsr.InvokeVoidAsync("localStorage.setItem", "token",result.accessToken).ConfigureAwait(false);
             await jsr.InvokeVoidAsync("alert", user.Login + " logado");
+            NavManager.NavigateTo("/Users");
         }
 
 

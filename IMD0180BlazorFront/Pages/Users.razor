@@ -39,8 +39,8 @@ else
                     <td>@user.Login</td>
                     <td>@user.Role</td>
                     <td>
-                        <a href='/editUser/@user.Id'>Edita</a>
-                        <a href='/deleteUser/@user.Id'>Deleta</a>
+                        <a href='/edituser/@user.Id'>Edita</a>
+                        <a href='/deleteuser/@user.Id'>Deleta</a>
                     </td>
                 </tr>
             }
@@ -69,7 +69,6 @@ else
             }
             else
             {
-
                 if (response.Content is object && response.Content.Headers.ContentType.MediaType == "application/json")
                 {
                     string contentString = await response.Content.ReadAsStringAsync();
